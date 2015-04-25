@@ -18,7 +18,7 @@
 
 	<script>
 	  $(function() {
-	    $("#tabs").tabs();
+	    $("#tabs").tabs( {activate: function(event,ui){ activatetab(event,ui); } } );
 	  });
 	  </script>
 </head>
@@ -30,6 +30,7 @@
 		 library to display the data.</p>
 	<p>The charts below illustrate various ways to apply a dft/fft. (Click headings to
 		view text and graphs.)</p>
+	<p>Code is up on GitHub and I'll be tweaking it to make it more useful, efficient etc.'</p>
 
 	<!-- package demo in selectable div sections -->
 	<div id="tabs">
@@ -71,12 +72,15 @@
 	  </div>
 	  <div id="t5">
 		<p><b>Half Length FFT of Packed Real Signal</b></p>
-	    <p></p>
+		<p>The half real transform allows a real transform to be split into a half length complex
+			signal and transformed by a half length transform. Depending on processor, this may be
+			significantly more efficient, more so than just the halving of the date length might 
+			indicate</p>
 		<div id="t5c"></div>
 	  </div>
 	  <div id="t6">
 		<p><b>Half Length Inverse Transform</b></p>
-	    <p></p>
+	    <p>Verification that the half length reverse transform works as expected.</p>
 		<div id="t6c"></div>
 	  </div>
 	</div>
@@ -84,17 +88,17 @@
 
 	<script>
 
-	var FFTLEN = 128;
+	var FFTLEN = 64;
 	var CHARTLEN = FFTLEN<<1;
 
 	// function to use for real signal
-	var f1 = 3*FFTLEN/19;
-	var f2 = 7*FFTLEN/19;
-	var f3 = 12*FFTLEN/19;
+	var f1 = 3;
+	var f2 = 7;
+	var f3 = 12;
 	sinfunc = function(i,fftlen) {
 		return Math.sin(f1*i*2*Math.PI/FFTLEN)
- 		+Math.sin(Math.PI/2+f2*i*2*Math.PI/FFTLEN)
- 		+Math.sin(Math.PI/4+f3*i*2*Math.PI/FFTLEN);
+ 		+Math.sin(f2*i*2*Math.PI/FFTLEN)
+ 		+Math.sin(f3*i*2*Math.PI/FFTLEN);
 	}
 	impulsefunc = function(i,fftlen) {
 		if(i==Math.round(fftlen/3))
@@ -108,126 +112,197 @@
 		return 0;
 	}
 
+	FUNC = sinfunc;
+
 	// Add controls
 	var gui = new dat.GUI();
 	var resetfft = gui.add(window, 'FFTLEN', {8:8,16:16,32:32,64:64,128:128,256:256});
+	var resetcof1 = gui.add(window, 'f1', 0, 8);
+	var resetcof2 = gui.add(window, 'f2', 0, 16);
+	var resetcof3 = gui.add(window, 'f3', 0, 32);
+	var resetfunc = gui.add(window, 'FUNC', {sinfunc:'sinfunc', impulsefunc:'impulsefunc', 
+											shelffunc:'shelffunc'});
 
-	resetfft.onFinishChange( function(value) {
+	redrawtab = function() {
 		// redraw fft with new parameters
-		alert("values changed: " + FFTLEN);
-	})
+		// parameters -> numeric
+		FFTLEN = Number(FFTLEN);
+		switch(FUNC) {
+			case 'sinfunc': FUNC=sinfunc; break;
+			case 'impulsefunc': FUNC=impulsefunc; break;
+			case 'shelffunc': FUNC=shelffunc; break;
+		}
+		f1 = Number(f1);
+		f2 = Number(f2);
+		f3 = Number(f3);
+		var active = $( "#tabs" ).tabs( "option", "active" );
+		switch(active+1) {
+			case 1: clean("t1c"); tab1(); break;
+			case 2: clean("t2c"); tab2(); break;
+			case 3: clean("t3c"); tab3(); break;
+			case 4: clean("t4c"); tab4(); break;
+			case 5: clean("t5c"); tab5(); break;
+			case 6: clean("t6c"); tab6(); break;
+		}
+	};
+		
+	activatetab = function(event,ui) {
+		redrawtab();
+	};
 
+	// redraw selected tab if a parameter is changed
+	resetfft.onFinishChange( redrawtab );
+	resetfunc.onFinishChange(redrawtab );
+	resetcof1.onFinishChange(redrawtab );
+	resetcof2.onFinishChange(redrawtab );
+	resetcof3.onFinishChange(redrawtab );
+	
 	// ==================== t1: Real Signal to Complex ====================
 	
-	// populate N real signal and chart it
-	var realdata = populateFullReal(FFTLEN,impulsefunc);
-	output("t1c","Real-valued signal (" + FFTLEN + " points)");
-	chartBuffer("t1c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
+	var tab1 = function() {
+		// populate N real signal and chart it
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		output("t1c","Real-valued signal (" + FFTLEN + " points)");
+		chartBuffer("t1c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
 	
-	// populate N real signal into complex signal and chart it
-	var cplxdata = makeComplex(realdata,FFTLEN);
-	output("t1c","Complex-valued signal (" + FFTLEN + " complex points)");
-	chartBuffer("t1c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+		// populate N real signal into complex signal and chart it
+		var cplxdata = makeComplex(realdata,FFTLEN);
+		output("t1c","Complex-valued signal (" + FFTLEN + " complex points)");
+		chartBuffer("t1c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+	}
 
 	// ==================== t2: Complex FFT ====================
 
-	// plot the complex valued signal
-	output("t2c","Complex-valued signal (" + FFTLEN + " complex points)");
-	chartBuffer("t2c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+	var tab2 = function() {
 
-	// forward transform the complex signal
-	var fftdata = jsFFT(cplxdata,FFTLEN,1);
-	output("t2c",""+FFTLEN+"-point Complex FFT");
-	chartBuffer("t2c",fftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+		// plot the complex valued signal
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		var cplxdata = makeComplex(realdata,FFTLEN);
+		output("t2c","Complex-valued signal (" + FFTLEN + " complex points)");
+		chartBuffer("t2c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
 
-	// calculate magnitude
-	var magdata = jsMagnitude(fftdata,FFTLEN);
-	output("t2c","Magnitude");
-	chartBuffer("t2c",magdata,[{start:0,count:FFTLEN/2,stride:1,color:"rgba(151,187,205,0.8)"},]);
+		// forward transform the complex signal
+		var fftdata = jsFFT(cplxdata,FFTLEN,1);
+		output("t2c",""+FFTLEN+"-point Complex FFT");
+		chartBuffer("t2c",fftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
 
+		// calculate magnitude
+		var magdata = jsMagnitude(fftdata,FFTLEN);
+		output("t2c","Magnitude");
+		chartBuffer("t2c",magdata,[{start:0,count:FFTLEN/2,stride:1,color:"rgba(151,187,205,0.8)"},]);
+	}
+	
 	// ==================== t3: Complex Inverse Transform ====================
 
-	// plot the complex valued signal
-	output("t3c","Complex-valued signal (" + FFTLEN + " complex points)");
-	chartBuffer("t3c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+	var tab3 = function() {
+		
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		var cplxdata = makeComplex(realdata,FFTLEN);
+		var fftdata = jsFFT(cplxdata,FFTLEN,1);
+		var magdata = jsMagnitude(fftdata,FFTLEN);
 
-	// plot the transform from complex
-	output("t3c",""+FFTLEN+"-point Complex FFT");
-	chartBuffer("t3c",fftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+		// plot the complex valued signal
+		output("t3c","Complex-valued signal (" + FFTLEN + " complex points)");
+		chartBuffer("t3c",cplxdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
 
-	// reverse transform to recover original signal
-	var iftdata = jsFFT(fftdata,FFTLEN,-1);
-	output("t3c","Inverse transform to recover original signal");
-	chartBuffer("t3c",iftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+		// plot the transform from complex
+		output("t3c",""+FFTLEN+"-point Complex FFT");
+		chartBuffer("t3c",fftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
 
+		// reverse transform to recover original signal
+		var iftdata = jsFFT(fftdata,FFTLEN,-1);
+		output("t3c","Inverse transform to recover original signal");
+		chartBuffer("t3c",iftdata,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.5)"},]);
+	}
+	
 	// ==================== t4: Half Length Packed Real ====================
 
-	// plot original real valued signal
-	output("t4c","Real-valued signal (" + FFTLEN + " points)");
-	chartBuffer("t4c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
-	
-	// create a N/2 complex array from N point real signal
-	var halfcplxdata = packRealToHalfComplex(realdata,FFTLEN);
-	output("t4c","Half length N/2 packed-real complex signal");
-	chartBuffer("t4c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-						      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+	var tab4 = function() {
+		
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		var halfcplxdata = packRealToHalfComplex(realdata,FFTLEN);
 
+		// plot original real valued signal
+		output("t4c","Real-valued signal (" + FFTLEN + " points)");
+		chartBuffer("t4c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
+	
+		// create a N/2 complex array from N point real signal
+		output("t4c","Half length N/2 packed-real complex signal");
+		chartBuffer("t4c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+							      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+	}
+	
 	// ==================== t5: Half Complex Transform ====================
 
-	// plot original real valued signal
-	output("t5c","Real-valued signal (" + FFTLEN + " points)");
-	chartBuffer("t5c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
+	var tab5 = function() {
+		
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		var halfcplxdata = packRealToHalfComplex(realdata,FFTLEN);
+		var halfcplxfft = jsRealFFT(halfcplxdata,FFTLEN,1);
+		var cplxfft = unpackHalfComplexFFT(halfcplxfft,FFTLEN);		// pass full length
+		var invunpackedfft = jsFFT(cplxfft,FFTLEN,-1);
+
+		// plot original real valued signal
+		output("t5c","Real-valued signal (" + FFTLEN + " points)");
+		chartBuffer("t5c",realdata,[{start:0,count:FFTLEN,stride:1,color:"rgba(151,187,205,0.8)"},]);
 	
-	// plot half length complex signal
-	output("t5c","Half length N/2 packed-real complex signal");
-	chartBuffer("t5c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-						      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+		// plot half length complex signal
+		output("t5c","Half length N/2 packed-real complex signal");
+		chartBuffer("t5c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+							      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
 
-	// Apply a half length complex FFT to packed real signal
-	var halfcplxfft = jsRealFFT(halfcplxdata,FFTLEN,1);
-	output("t5c","N/2 complex FFT of packed real signal");
-	chartBuffer("t5c",halfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-								{start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+		// Apply a half length complex FFT to packed real signal
+		output("t5c","N/2 complex FFT of packed real signal");
+		chartBuffer("t5c",halfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+									{start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
 
-	// Unpack half-length transform to hermitian
-	var cplxfft = unpackHalfComplexFFT(halfcplxfft,FFTLEN);		// pass full length
-	output("t5c","Unpacked half length transform (equivalent to result from full transform)");
-	chartBuffer("t5c",cplxfft,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						 	  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.8)"},]);
+		// Unpack half-length transform to hermitian
+		output("t5c","Unpacked half length transform (equivalent to result from full transform)");
+		chartBuffer("t5c",cplxfft,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							 	  {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.8)"},]);
 
-	// Apply regular inverse transform (verify we can recover original signal)
-	var invunpackedfft = jsFFT(cplxfft,FFTLEN,-1);
-	output("t5c","Apply full inverse transform to verify we can recover original signal");
-	chartBuffer("t5c",invunpackedfft,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
-						 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.8)"},]);
-
+		// Apply regular inverse transform (verify we can recover original signal)
+		output("t5c","Apply full inverse transform to verify we can recover original signal");
+		chartBuffer("t5c",invunpackedfft,[{start:0,count:FFTLEN,stride:2,color:"rgba(151,187,205,0.8)"},
+							 {start:1,count:FFTLEN,stride:2,color:"rgba(235,151,151,0.8)"},]);
+	}
 
 	// ==================== t6: Half Length Inverse Transform ====================
 
-	// create a N/2 complex array from N point real signal
-	var halfcplxdata = packRealToHalfComplex(realdata,FFTLEN);
-	output("t6c","Half length N/2 packed-real complex signal");
-	chartBuffer("t6c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-						      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+	var tab6 = function() {
+		
+		var realdata = populateFullReal(FFTLEN,FUNC);
+		var halfcplxdata = packRealToHalfComplex(realdata,FFTLEN);
+		var halfcplxfft = jsRealFFT(halfcplxdata,FFTLEN,1);
+		var invhalfcplxfft = jsRealFFT(halfcplxfft,FFTLEN,-1);
 
-	// Half length complex transform
-	output("t6c","Half length transform");
-	chartBuffer("t6c",halfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-							 {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+		// create a N/2 complex array from N point real signal
+		output("t6c","Half length N/2 packed-real complex signal");
+		chartBuffer("t6c",halfcplxdata,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+							      {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
 
-	// inverse FFT on packed half complex
-	var invhalfcplxfft = jsRealFFT(halfcplxfft,FFTLEN,-1);
-	output("t6c","Inverse FFT on packed transform");
-	chartBuffer("t6c",invhalfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
-						             {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
-	//
+		// Half length complex transform
+		output("t6c","Half length transform");
+		chartBuffer("t6c",halfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+								 {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
 
+		// inverse FFT on packed half complex
+		output("t6c","Inverse FFT on packed transform");
+		chartBuffer("t6c",invhalfcplxfft,[{start:0,count:FFTLEN/2,stride:2,color:"rgba(151,187,205,0.8)"},
+							             {start:1,count:FFTLEN/2,stride:2,color:"rgba(235,151,151,0.8)"},]);
+	}
+	
+	tab1();
+
+	
+	
+	
 	</script>
 </body>
 </html>

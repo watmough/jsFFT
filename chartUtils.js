@@ -17,8 +17,6 @@ clean = function(parentId) {
 	while (sect.firstChild) {
 	    sect.removeChild(sect.firstChild);
 	}
-	sect.appendChild(title);
-	sect.appendChild(document.createElement("br"));
 }
 
 // arrays
