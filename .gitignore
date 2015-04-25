@@ -1,0 +1,4 @@
+# Ignore files
+
+*.tmproj
+*.DS_Store
