@@ -24,6 +24,6 @@ As a significant efficiency improvement, a signal that consists of only real val
 
 The half real transform allows a real transform to be split into a half length complex signal and transformed by a half length transform. Depending on processor, this may be significantly more efficient, more so than just the halving of the date length might indicate.
 
-Half Length Inverse Transform [See demo]()
+## Half Length Inverse Transform [See demo]()
 
 Verification that the half length reverse transform works as expected.
