@@ -327,7 +327,6 @@
 			return valueToCap;
 		},
 		getDecimalPlaces = helpers.getDecimalPlaces = function(num){
-			console.log("getDec: %d",num);
 			if (isNumber(num) && num.toString().split(".").length>1){
 				return num.toString().split(".")[1].length;
 			}
